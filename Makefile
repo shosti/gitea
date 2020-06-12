@@ -180,7 +180,7 @@ TEST_MSSQL_PASSWORD ?= MwantsaSecurePassword1
 TEST_COCKROACH_HOST ?= cockroach:26257
 TEST_COCKROACH_DBNAME ?= gitea
 TEST_COCKROACH_USERNAME ?= root
-TEST_COCKROACH_PASSWORD ?= 
+TEST_COCKROACH_PASSWORD ?=
 
 .PHONY: all
 all: build
@@ -279,7 +279,7 @@ clean:
 		integrations*.test \
 		e2e*.test \
 		tests/integration/gitea-integration-pgsql/ tests/integration/gitea-integration-mysql/ tests/integration/gitea-integration-mysql8/ tests/integration/gitea-integration-sqlite/ \
-		tests/integration/gitea-integration-mssql/ tests/integration/indexers-mysql/ tests/integration/indexers-mysql8/ tests/integration/indexers-pgsql tests/integration/indexers-sqlite \
+		tests/integration/gitea-integration-mssql/ tests/integration/indexers-mysql/ tests/integration/indexers-mysql8/ tests/integration/indexers-cockroach tests/integration/indexers-pgsql tests/integration/indexers-sqlite \
 		tests/integration/indexers-mssql tests/mysql.ini tests/mysql8.ini tests/pgsql.ini tests/mssql.ini man/ \
 		tests/e2e/gitea-e2e-pgsql/ tests/e2e/gitea-e2e-mysql/ tests/e2e/gitea-e2e-mysql8/ tests/e2e/gitea-e2e-sqlite/ \
 		tests/e2e/gitea-e2e-mssql/ tests/e2e/indexers-mysql/ tests/e2e/indexers-mysql8/ tests/e2e/indexers-pgsql/ tests/e2e/indexers-sqlite/ \
@@ -708,6 +708,9 @@ integrations.mysql8.test: git-check $(GO_SOURCES)
 
 integrations.pgsql.test: git-check $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration -o integrations.pgsql.test
+
+integrations.cockroach.test: git-check $(GO_SOURCES)
+	$(GO) test $(GOTESTFLAGS) -mod=vendor -c code.gitea.io/gitea/integrations -o integrations.cockroach.test
 
 integrations.mssql.test: git-check $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration -o integrations.mssql.test
