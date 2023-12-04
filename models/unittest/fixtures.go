@@ -60,6 +60,7 @@ func InitFixtures(opts FixturesOptions, engine ...*xorm.Engine) (err error) {
 
 	if e.Dialect().URI().DBType == schemas.POSTGRES {
 		loaderOptions = append(loaderOptions, testfixtures.SkipResetSequences())
+		loaderOptions = append(loaderOptions, testfixtures.UseDropConstraint())
 	}
 
 	fixturesLoader, err = testfixtures.New(loaderOptions...)

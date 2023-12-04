@@ -566,8 +566,12 @@ func deleteDB() error {
 		}
 		return nil
 	case setting.Database.Type.IsPostgreSQL():
-		db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/?sslmode=%s",
-			setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.SSLMode))
+		var extraParams string
+		if setting.Database.Type.IsCockroachDB() {
+			extraParams = "&serial_normalization=sql_sequence"
+		}
+		db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/?sslmode=%s%s",
+			setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.SSLMode, extraParams))
 		if err != nil {
 			return err
 		}
@@ -584,8 +588,8 @@ func deleteDB() error {
 
 		// Check if we need to setup a specific schema
 		if len(setting.Database.Schema) != 0 {
-			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode))
+			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s%s",
+				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode, extraParams))
 			if err != nil {
 				return err
 			}

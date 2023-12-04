@@ -16,9 +16,9 @@ import (
 
 var (
 	// SupportedDatabaseTypes includes all XORM supported databases type, sqlite3 maybe added by `database_sqlite3.go`
-	SupportedDatabaseTypes = []string{"mysql", "postgres", "mssql"}
+	SupportedDatabaseTypes = []string{"mysql", "postgres", "cockroach", "mssql"}
 	// DatabaseTypeNames contains the friendly names for all database types
-	DatabaseTypeNames = map[string]string{"mysql": "MySQL", "postgres": "PostgreSQL", "mssql": "MSSQL", "sqlite3": "SQLite3"}
+	DatabaseTypeNames = map[string]string{"mysql": "MySQL", "postgres": "PostgreSQL", "cockroach": "CockroachDB", "mssql": "MSSQL", "sqlite3": "SQLite3"}
 
 	// EnableSQLite3 use SQLite3, set by build flag
 	EnableSQLite3 bool
@@ -109,6 +109,8 @@ func DBConnStr() (string, error) {
 			Database.User, Database.Passwd, connType, Database.Host, Database.Name, paramSep, Database.MysqlCharset, tls)
 	case "postgres":
 		connStr = getPostgreSQLConnectionString(Database.Host, Database.User, Database.Passwd, Database.Name, paramSep, Database.SSLMode)
+	case "cockroach":
+		connStr = getCockroachConnectionString(Database.Host, Database.User, Database.Passwd, Database.Name, paramSep, Database.SSLMode)
 	case "mssql":
 		host, port := ParseMSSQLHostPort(Database.Host)
 		connStr = fmt.Sprintf("server=%s; port=%s; database=%s; user id=%s; password=%s;", host, port, Database.Name, Database.User, Database.Passwd)
@@ -151,6 +153,10 @@ func parsePostgreSQLHostPort(info string) (string, string) {
 		port = "5432"
 	}
 	return host, port
+}
+
+func getCockroachConnectionString(dbHost, dbUser, dbPasswd, dbName, dbParam, dbsslMode string) (connStr string) {
+	return getPostgreSQLConnectionString(dbHost, dbUser, dbPasswd, dbName, dbParam, dbsslMode) + "&serial_normalization=sql_sequence"
 }
 
 func getPostgreSQLConnectionString(dbHost, dbUser, dbPasswd, dbName, dbParam, dbsslMode string) (connStr string) {
@@ -206,5 +212,9 @@ func (t DatabaseType) IsMSSQL() bool {
 }
 
 func (t DatabaseType) IsPostgreSQL() bool {
-	return t == "postgres"
+	return t == "postgres" || t == "cockroach"
+}
+
+func (t DatabaseType) IsCockroachDB() bool {
+	return t == "cockroach"
 }
