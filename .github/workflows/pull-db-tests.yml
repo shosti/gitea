@@ -58,6 +58,53 @@ jobs:
           TEST_LDAP: 1
           USE_REPO_TEST_DIR: 1
 
+  test-crdb:
+    if: needs.files-changed.outputs.backend == 'true' || needs.files-changed.outputs.actions == 'true'
+    needs: files-changed
+    runs-on: ubuntu-latest
+    services:
+      crdb:
+        image: shosti/cockroach:gitea-v22.2.17
+        env:
+          COCKROACH_DATABASE: testgitea
+          COCKROACH_USER: gitea
+        ports:
+          - "26257:26257"
+      ldap:
+        image: gitea/test-openldap:latest
+        ports:
+          - "389:389"
+          - "636:636"
+      minio:
+        # as github actions doesn't support "entrypoint", we need to use a non-official image
+        # that has a custom entrypoint set to "minio server /data"
+        image: bitnami/minio:2023.8.31
+        env:
+          MINIO_ROOT_USER: 123456
+          MINIO_ROOT_PASSWORD: 12345678
+        ports:
+          - "9000:9000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "~1.21"
+          check-latest: true
+      - name: Add hosts to /etc/hosts
+        run: '[ -e "/.dockerenv" ] || [ -e "/run/.containerenv" ] || echo "127.0.0.1 crdb ldap minio" | sudo tee -a /etc/hosts'
+      - run: make deps-backend
+      - run: make backend
+        env:
+          TAGS: bindata
+      - run: make test-crdb-migration test-crdb
+        timeout-minutes: 50
+        env:
+          TAGS: bindata gogit
+          RACE_ENABLED: true
+          TEST_TAGS: gogit
+          TEST_LDAP: 1
+          USE_REPO_TEST_DIR: 1
+
   test-sqlite:
     if: needs.files-changed.outputs.backend == 'true' || needs.files-changed.outputs.actions == 'true'
     needs: files-changed

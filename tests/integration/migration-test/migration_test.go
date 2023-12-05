@@ -191,13 +191,17 @@ func restoreOldDB(t *testing.T, version string) bool {
 	case setting.Database.Type.IsPostgreSQL():
 		var db *sql.DB
 		var err error
+		var extraParams string
+		if setting.Database.Type.IsCockroachDB() {
+			extraParams = "&serial_normalization=sql_sequence"
+		}
 		if setting.Database.Host[0] == '/' {
-			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/?sslmode=%s&host=%s",
-				setting.Database.User, setting.Database.Passwd, setting.Database.SSLMode, setting.Database.Host))
+			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/?sslmode=%s&host=%s%s",
+				setting.Database.User, setting.Database.Passwd, setting.Database.SSLMode, setting.Database.Host, extraParams))
 			assert.NoError(t, err)
 		} else {
-			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/?sslmode=%s",
-				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.SSLMode))
+			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/?sslmode=%s%s",
+				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.SSLMode, extraParams))
 			assert.NoError(t, err)
 		}
 		defer db.Close()
@@ -212,11 +216,11 @@ func restoreOldDB(t *testing.T, version string) bool {
 		// Check if we need to setup a specific schema
 		if len(setting.Database.Schema) != 0 {
 			if setting.Database.Host[0] == '/' {
-				db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/%s?sslmode=%s&host=%s",
-					setting.Database.User, setting.Database.Passwd, setting.Database.Name, setting.Database.SSLMode, setting.Database.Host))
+				db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/%s?sslmode=%s&host=%s%s",
+					setting.Database.User, setting.Database.Passwd, setting.Database.Name, setting.Database.SSLMode, setting.Database.Host, extraParams))
 			} else {
-				db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-					setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode))
+				db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s%s",
+					setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode, extraParams))
 			}
 			if !assert.NoError(t, err) {
 				return false
@@ -243,11 +247,11 @@ func restoreOldDB(t *testing.T, version string) bool {
 		}
 
 		if setting.Database.Host[0] == '/' {
-			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/%s?sslmode=%s&host=%s",
-				setting.Database.User, setting.Database.Passwd, setting.Database.Name, setting.Database.SSLMode, setting.Database.Host))
+			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@/%s?sslmode=%s&host=%s%s",
+				setting.Database.User, setting.Database.Passwd, setting.Database.Name, setting.Database.SSLMode, setting.Database.Host, extraParams))
 		} else {
-			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode))
+			db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s%s",
+				setting.Database.User, setting.Database.Passwd, setting.Database.Host, setting.Database.Name, setting.Database.SSLMode, extraParams))
 		}
 		assert.NoError(t, err)
 		defer db.Close()

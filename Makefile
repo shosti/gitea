@@ -176,6 +176,11 @@ TEST_PGSQL_DBNAME ?= testgitea
 TEST_PGSQL_USERNAME ?= postgres
 TEST_PGSQL_PASSWORD ?= postgres
 TEST_PGSQL_SCHEMA ?= gtestschema
+TEST_CRDB_HOST ?= crdb:26257
+TEST_CRDB_DBNAME ?= testgitea
+TEST_CRDB_USERNAME ?= gitea
+TEST_CRDB_PASSWORD ?=
+TEST_CRDB_SCHEMA ?= gtestschema
 TEST_MSSQL_HOST ?= mssql:1433
 TEST_MSSQL_DBNAME ?= gitea
 TEST_MSSQL_USERNAME ?= sa
@@ -284,7 +289,7 @@ clean:
 		e2e*.test \
 		tests/integration/gitea-integration-* \
 		tests/integration/indexers-* \
-		tests/mysql.ini tests/pgsql.ini tests/mssql.ini man/ \
+		tests/mysql.ini tests/pgsql.ini tests/crdb.ini tests/mssql.ini man/ \
 		tests/e2e/gitea-e2e-*/ \
 		tests/e2e/indexers-*/ \
 		tests/e2e/reports/ tests/e2e/test-artifacts/ tests/e2e/test-snapshots/
@@ -573,6 +578,28 @@ test-pgsql\#%: integrations.pgsql.test generate-ini-pgsql
 .PHONY: test-pgsql-migration
 test-pgsql-migration: migrations.pgsql.test migrations.individual.pgsql.test
 
+generate-ini-crdb:
+	sed -e 's|{{TEST_CRDB_HOST}}|${TEST_CRDB_HOST}|g' \
+		-e 's|{{TEST_CRDB_DBNAME}}|${TEST_CRDB_DBNAME}|g' \
+		-e 's|{{TEST_CRDB_USERNAME}}|${TEST_CRDB_USERNAME}|g' \
+		-e 's|{{TEST_CRDB_PASSWORD}}|${TEST_CRDB_PASSWORD}|g' \
+		-e 's|{{TEST_CRDB_SCHEMA}}|${TEST_CRDB_SCHEMA}|g' \
+		-e 's|{{REPO_TEST_DIR}}|${REPO_TEST_DIR}|g' \
+		-e 's|{{TEST_LOGGER}}|$(or $(TEST_LOGGER),test$(COMMA)file)|g' \
+		-e 's|{{TEST_TYPE}}|$(or $(TEST_TYPE),integration)|g' \
+			tests/crdb.ini.tmpl > tests/crdb.ini
+
+.PHONY: test-crdb
+test-crdb: integrations.crdb.test generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./integrations.crdb.test
+
+.PHONY: test-crdb\#%
+test-crdb\#%: integrations.crdb.test generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./integrations.crdb.test -test.run $(subst .,/,$*)
+
+.PHONY: test-crdb-migration
+test-crdb-migration: migrations.crdb.test migrations.individual.crdb.test
+
 generate-ini-mssql:
 	sed -e 's|{{TEST_MSSQL_HOST}}|${TEST_MSSQL_HOST}|g' \
 		-e 's|{{TEST_MSSQL_DBNAME}}|${TEST_MSSQL_DBNAME}|g' \
@@ -631,6 +658,14 @@ test-e2e-pgsql: playwright e2e.pgsql.test generate-ini-pgsql
 test-e2e-pgsql\#%: playwright e2e.pgsql.test generate-ini-pgsql
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/pgsql.ini ./e2e.pgsql.test -test.run TestE2e/$*
 
+.PHONY: test-e2e-crdb
+test-e2e-crdb: playwright e2e.crdb.test generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./e2e.crdb.test
+
+.PHONY: test-e2e-crdb\#%
+test-e2e-crdb\#%: playwright e2e.crdb.test generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./e2e.crdb.test -test.run TestE2e/$*
+
 .PHONY: test-e2e-mssql
 test-e2e-mssql: playwright e2e.mssql.test generate-ini-mssql
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/mssql.ini ./e2e.mssql.test
@@ -655,6 +690,10 @@ bench-mssql: integrations.mssql.test generate-ini-mssql
 bench-pgsql: integrations.pgsql.test generate-ini-pgsql
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/pgsql.ini ./integrations.pgsql.test -test.cpuprofile=cpu.out -test.run DontRunTests -test.bench .
 
+.PHONY: bench-crdb
+bench-crdb: integrations.crdb.test generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./integrations.crdb.test -test.cpuprofile=cpu.out -test.run DontRunTests -test.bench .
+
 .PHONY: integration-test-coverage
 integration-test-coverage: integrations.cover.test generate-ini-mysql
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/mysql.ini ./integrations.cover.test -test.coverprofile=integration.coverage.out
@@ -668,6 +707,9 @@ integrations.mysql.test: git-check $(GO_SOURCES)
 
 integrations.pgsql.test: git-check $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration -o integrations.pgsql.test
+
+integrations.crdb.test: git-check $(GO_SOURCES)
+	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration -o integrations.crdb.test
 
 integrations.mssql.test: git-check $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration -o integrations.mssql.test
@@ -690,6 +732,11 @@ migrations.mysql.test: $(GO_SOURCES) generate-ini-mysql
 migrations.pgsql.test: $(GO_SOURCES) generate-ini-pgsql
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration/migration-test -o migrations.pgsql.test
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/pgsql.ini ./migrations.pgsql.test
+
+.PHONY: migrations.crdb.test
+migrations.crdb.test: $(GO_SOURCES) generate-ini-crdb
+	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/integration/migration-test -o migrations.crdb.test
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini ./migrations.crdb.test
 
 .PHONY: migrations.mssql.test
 migrations.mssql.test: $(GO_SOURCES) generate-ini-mssql
@@ -721,6 +768,16 @@ migrations.individual.pgsql.test: $(GO_SOURCES)
 migrations.individual.pgsql.test\#%: $(GO_SOURCES) generate-ini-pgsql
 	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/pgsql.ini $(GO) test $(GOTESTFLAGS) -tags '$(TEST_TAGS)' code.gitea.io/gitea/models/migrations/$*
 
+.PHONY: migrations.individual.crdb.test
+migrations.individual.crdb.test: $(GO_SOURCES)
+	for pkg in $(shell $(GO) list code.gitea.io/gitea/models/migrations/...); do \
+		GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini $(GO) test $(GOTESTFLAGS) -tags '$(TEST_TAGS)' $$pkg; \
+	done
+
+.PHONY: migrations.individual.crdb.test\#%
+migrations.individual.crdb.test\#%: $(GO_SOURCES) generate-ini-crdb
+	GITEA_ROOT="$(CURDIR)" GITEA_CONF=tests/crdb.ini $(GO) test $(GOTESTFLAGS) -tags '$(TEST_TAGS)' code.gitea.io/gitea/models/migrations/$*
+
 
 .PHONY: migrations.individual.mssql.test
 migrations.individual.mssql.test: $(GO_SOURCES) generate-ini-mssql
@@ -747,6 +804,9 @@ e2e.mysql.test: $(GO_SOURCES)
 
 e2e.pgsql.test: $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/e2e -o e2e.pgsql.test
+
+e2e.crdb.test: $(GO_SOURCES)
+	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/e2e -o e2e.crdb.test
 
 e2e.mssql.test: $(GO_SOURCES)
 	$(GO) test $(GOTESTFLAGS) -c code.gitea.io/gitea/tests/e2e -o e2e.mssql.test

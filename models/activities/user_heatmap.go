@@ -45,6 +45,8 @@ func getUserHeatmapData(ctx context.Context, user *user_model.User, team *organi
 		groupBy = "created_unix DIV 900 * 900"
 	case setting.Database.Type.IsMSSQL():
 		groupByName = groupBy
+	case setting.Database.Type.IsCockroachDB():
+		groupBy = "created_unix // 900 * 900"
 	}
 
 	cond, err := activityQueryCondition(ctx, GetFeedsOptions{

@@ -259,6 +259,10 @@ func DumpDatabase(filePath, dbType string) error {
 	}
 	tbs = append(tbs, t)
 
+	// Dump CockrachDB as postgres
+	if dbType == "cockroach" {
+		dbType = "postgres"
+	}
 	if len(dbType) > 0 {
 		return x.DumpTablesToFile(tbs, filePath, schemas.DBType(dbType))
 	}
